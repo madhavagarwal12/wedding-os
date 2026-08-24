@@ -92,10 +92,14 @@ by `.gitignore` — it must never be committed.
 
 ## 5. First boot: migrate, seed, start
 
+`docker compose` only auto-loads a file literally named `.env` — since ours
+is `.env.production`, every command below needs `--env-file .env.production`
+explicitly, or `POSTGRES_PASSWORD` silently defaults to blank:
+
 ```bash
-docker compose -f docker-compose.vps.yml --profile tools run --rm migrate
-docker compose -f docker-compose.vps.yml up -d --build
-docker compose -f docker-compose.vps.yml ps
+docker compose --env-file .env.production -f docker-compose.vps.yml --profile tools run --rm migrate
+docker compose --env-file .env.production -f docker-compose.vps.yml up -d --build
+docker compose --env-file .env.production -f docker-compose.vps.yml ps
 ```
 
 The `migrate` step applies the Prisma schema and creates the first Owner
@@ -145,7 +149,7 @@ automatically. No manual server work for routine updates.
 
 Same checklist as the general playbook:
 
-1. `docker compose -f docker-compose.vps.yml ps` — is postgres healthy, is app running?
-2. `docker compose -f docker-compose.vps.yml logs app` — read the actual error.
+1. `docker compose --env-file .env.production -f docker-compose.vps.yml ps` — is postgres healthy, is app running?
+2. `docker compose --env-file .env.production -f docker-compose.vps.yml logs app` — read the actual error.
 3. TLS handshake succeeds but page hangs → check `traefik.docker.network` matches your real network name (step 1).
 4. Uploads disappearing after a redeploy → confirm the `uploads_data` volume is still mounted (it is, by default, in `docker-compose.vps.yml`).
