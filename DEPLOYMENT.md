@@ -60,9 +60,9 @@ testing `https://weddingos.autopilot-studio.com`.
 ## 3. Get the code onto the server
 
 ```bash
-cd ~
+cd /opt
 git clone https://github.com/madhavagarwal12/wedding-os.git
-cd wedding-os
+cd /opt/wedding-os
 ```
 
 ---

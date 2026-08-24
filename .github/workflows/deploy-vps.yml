@@ -19,7 +19,7 @@ jobs:
           key: ${{ secrets.VPS_DEPLOY_KEY }}
           script: |
             set -e
-            cd ~/wedding-os
+            cd /opt/wedding-os
             git pull origin main
             docker compose -f docker-compose.vps.yml --profile tools run --rm migrate
             docker compose -f docker-compose.vps.yml up -d --build
