@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "test": "npm run test:unit",
     "test:unit": "vitest run",
     "test:integration": "dotenv -e .env.test -- vitest run --config vitest.integration.config.ts",
