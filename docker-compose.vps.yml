@@ -1,4 +1,12 @@
 services:
+  # Everything shares the single external "app-network" (the same network
+  # Traefik and your other VPS containers use). We deliberately don't give
+  # postgres/app a second, isolated network: on this host, containers with
+  # two networks attached unreliably lost connectivity on one of them
+  # (confirmed by reproducing it locally — see git history for
+  # docker-compose.vps.yml around 2026-08-24). Postgres is still protected
+  # by its password; it's just reachable from sibling containers on the
+  # shared network the same way it already is for helios-postgres etc.
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -9,7 +17,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - internal
+      - app-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U weddingos"]
       interval: 10s
@@ -33,7 +41,7 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      - internal
+      - app-network
 
   app:
     build:
@@ -51,10 +59,6 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      - internal
-      # Joins the actual reverse-proxy network on this VPS (confirmed via
-      # `docker inspect root-traefik-1` — the container's network key is
-      # "app-network", not "traefik").
       - app-network
     labels:
       - traefik.enable=true
@@ -63,15 +67,8 @@ services:
       # Confirmed via `docker inspect root-traefik-1 --format '{{json .Args}}'`
       - traefik.http.routers.weddingos.tls.certresolver=mytlschallenge
       - traefik.http.services.weddingos.loadbalancer.server.port=3000
-      # Required when the app container has more than one network attached
-      # (internal + app-network here) — without this Traefik can pick the
-      # wrong one and the connection will hang after a successful TLS
-      # handshake.
-      - traefik.docker.network=app-network
 
 networks:
-  internal:
-    driver: bridge
   app-network:
     external: true
 
