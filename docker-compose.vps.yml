@@ -60,10 +60,8 @@ services:
       - traefik.enable=true
       - traefik.http.routers.weddingos.rule=Host(`weddingos.autopilot-studio.com`)
       - traefik.http.routers.weddingos.entrypoints=websecure
-      # TODO: confirm this matches the certresolver name in whatever
-      # compose file started root-traefik-1 (likely /root/docker-compose.yml)
-      # before the first deploy — see DEPLOYMENT.md step 1.
-      - traefik.http.routers.weddingos.tls.certresolver=letsencrypt
+      # Confirmed via `docker inspect root-traefik-1 --format '{{json .Args}}'`
+      - traefik.http.routers.weddingos.tls.certresolver=mytlschallenge
       - traefik.http.services.weddingos.loadbalancer.server.port=3000
       # Required when the app container has more than one network attached
       # (internal + app-network here) — without this Traefik can pick the
