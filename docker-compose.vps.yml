@@ -52,30 +52,30 @@ services:
         condition: service_healthy
     networks:
       - internal
-      # Joins the reverse-proxy network your other VPS containers already
-      # use. Replace `traefik` below with the actual external network name
-      # if yours differs — check with `docker network ls` on the VPS.
-      - traefik
+      # Joins the actual reverse-proxy network on this VPS (confirmed via
+      # `docker inspect root-traefik-1` — the container's network key is
+      # "app-network", not "traefik").
+      - app-network
     labels:
       - traefik.enable=true
       - traefik.http.routers.weddingos.rule=Host(`weddingos.autopilot-studio.com`)
       - traefik.http.routers.weddingos.entrypoints=websecure
-      # Replace `letsencrypt` with your existing Traefik certresolver name
-      # (check your Traefik container's static config / other services'
-      # labels for the name already in use).
+      # TODO: confirm this matches the certresolver name in whatever
+      # compose file started root-traefik-1 (likely /root/docker-compose.yml)
+      # before the first deploy — see DEPLOYMENT.md step 1.
       - traefik.http.routers.weddingos.tls.certresolver=letsencrypt
       - traefik.http.services.weddingos.loadbalancer.server.port=3000
       # Required when the app container has more than one network attached
-      # (internal + traefik here) — without this Traefik can pick the wrong
-      # one and the connection will hang after a successful TLS handshake.
-      - traefik.docker.network=traefik
+      # (internal + app-network here) — without this Traefik can pick the
+      # wrong one and the connection will hang after a successful TLS
+      # handshake.
+      - traefik.docker.network=app-network
 
 networks:
   internal:
     driver: bridge
-  traefik:
+  app-network:
     external: true
-    name: traefik
 
 volumes:
   postgres_data:
