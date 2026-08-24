@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/weddingos?sslmode=disable
+      AUTH_SECRET: ci-placeholder-secret-not-used-at-runtime
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: app
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+        working-directory: app
+
+      - name: Lint
+        run: npm run lint
+        working-directory: app
+
+      - name: Typecheck
+        run: npm run typecheck
+        working-directory: app
+
+      - name: Build
+        run: npm run build
+        working-directory: app
+
+      - name: Unit tests
+        run: npm run test:unit
+        working-directory: app
+
+  integration-tests:
+    runs-on: ubuntu-latest
+
+    # Real Postgres service container — integration tests exercise actual
+    # cascade-delete / constraint behavior against a real database, not a
+    # mock, so this can't be skipped or faked.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: weddingos_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/weddingos_test?sslmode=disable
+      AUTH_SECRET: ci-placeholder-secret-not-used-at-runtime
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: app
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+        working-directory: app
+
+      - name: Apply migrations to test database
+        run: npx prisma migrate deploy
+        working-directory: app
+
+      - name: Integration tests
+        # DATABASE_URL is already set at the job level (above) rather than
+        # via .env.test/dotenv-cli, so run vitest directly against the
+        # integration config instead of `npm run test:integration`.
+        run: npx vitest run --config vitest.integration.config.ts
+        working-directory: app
+
+  # E2E (Playwright) smoke tests are intentionally NOT wired into CI yet.
+  # They need a full app boot (migrated + seeded Postgres, `npm run build`
+  # or `next start`, a real Owner login) rather than just a Postgres
+  # container, which is a larger and more flake-prone addition. Run them
+  # locally with `npm run test:e2e` (see README.md's Testing section) until
+  # that's set up.

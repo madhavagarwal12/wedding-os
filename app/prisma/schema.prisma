@@ -1,0 +1,737 @@
+// Wedding Operations Platform — Data Model
+// Source of truth: Wedding_Operations_Platform_PRD_v1.md, Section 33
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  OWNER
+  SALES
+  PLANNER
+  OPERATIONS
+  VENDOR_MANAGER
+  FINANCE
+  FIELD_STAFF
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  MEETING_SCHEDULED
+  REQUIREMENTS_COLLECTED
+  PROPOSAL_SENT
+  NEGOTIATION
+  WON
+  LOST
+}
+
+enum ProposalStatus {
+  DRAFT
+  SENT
+  UNDER_REVIEW
+  NEGOTIATION
+  ACCEPTED
+  REJECTED
+}
+
+enum WeddingStatus {
+  PLANNING
+  VENDOR_BOOKING
+  PRE_EVENT
+  EVENT_IN_PROGRESS
+  COMPLETED
+  CLOSED
+  CANCELLED
+}
+
+enum TaskStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  BLOCKED
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum VendorCategory {
+  VENUE
+  DECORATOR
+  CATERER
+  PHOTOGRAPHER
+  VIDEOGRAPHER
+  MAKEUP_ARTIST
+  MEHENDI_ARTIST
+  DJ
+  BAND
+  ARTIST_ENTERTAINMENT
+  FLORIST
+  LIGHTING
+  SOUND
+  FURNITURE
+  TRANSPORTATION
+  HOSPITALITY
+  INVITATION_PRINTING
+  GIFTS
+  SECURITY
+  OTHER
+}
+
+enum VendorStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum VendorBookingStatus {
+  PLANNED
+  CONTACTED
+  QUOTATION_RECEIVED
+  NEGOTIATION
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum RsvpStatus {
+  PENDING
+  INVITED
+  CONFIRMED
+  DECLINED
+  MAYBE
+}
+
+enum ClientPaymentStatus {
+  UPCOMING
+  DUE
+  PAID
+  PARTIALLY_PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum VendorPaymentStatus {
+  UPCOMING
+  DUE
+  PAID
+  PARTIALLY_PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum TimelineItemType {
+  CLIENT_DECISION
+  VENDOR_CONFIRMATION
+  PAYMENT_DEADLINE
+  TASK_DEADLINE
+  SETUP_DEADLINE
+  FUNCTION_MILESTONE
+  MEETING
+  DELIVERY
+  OTHER
+}
+
+enum DocumentOwnerType {
+  LEAD
+  CLIENT
+  WEDDING
+  FUNCTION
+  VENDOR
+  VENDOR_BOOKING
+  CLIENT_PAYMENT
+  VENDOR_PAYMENT
+  TASK
+}
+
+enum CommunicationChannel {
+  WHATSAPP
+  PHONE
+  EMAIL
+  IN_PERSON
+  OTHER
+}
+
+enum NotificationType {
+  FOLLOW_UP
+  PAYMENT
+  VENDOR
+  TASK
+  WEDDING
+  FUNCTION
+}
+
+enum MeetingType {
+  DISCOVERY
+  REQUIREMENTS
+  PROPOSAL
+  NEGOTIATION
+  PLANNING
+  SITE_VISIT
+  OTHER
+}
+
+// ---------------------------------------------------------------------------
+// Foundation: Organization, Users, Auth
+// ---------------------------------------------------------------------------
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  logoUrl   String?
+  phone     String?
+  email     String?
+  address   String?
+  city      String?
+  state     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users                   User[]
+  vendorCategoriesSetting Json?
+  budgetCategoriesSetting Json?
+  paymentMethodsSetting   Json?
+  currency                String @default("INR")
+}
+
+model User {
+  id             String       @id @default(cuid())
+  name           String
+  email          String       @unique
+  passwordHash   String
+  phone          String?
+  role           Role
+  isActive       Boolean      @default(true)
+  avatarUrl      String?
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  assignedLeads          Lead[]              @relation("LeadAssignee")
+  managedWeddings        Wedding[]           @relation("WeddingProjectManager")
+  weddingTeamMemberships WeddingTeamMember[]
+  assignedTasks          Task[]              @relation("TaskAssignee")
+  createdTasks           Task[]              @relation("TaskCreatedBy")
+  meetings               Meeting[]
+  communicationNotes     CommunicationNote[]
+  notifications          Notification[]
+  auditLogs              AuditLog[]
+  sessions               Session[]
+  uploadedDocuments      Document[]
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expires      DateTime
+  createdAt    DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// CRM: Lead -> Client
+// ---------------------------------------------------------------------------
+
+model Lead {
+  id                  String     @id @default(cuid())
+  leadName            String
+  primaryContact      String
+  phone               String
+  whatsapp            String?
+  email               String?
+  eventDate           DateTime?
+  location            String?
+  estimatedGuestCount Int?
+  estimatedBudget     Decimal?   @db.Decimal(14, 2)
+  expectedFunctions   String?
+  source              String?
+  requirements        String?
+  status              LeadStatus @default(NEW)
+  assignedToId        String?
+  assignedTo          User?      @relation("LeadAssignee", fields: [assignedToId], references: [id])
+  nextFollowUpDate    DateTime?
+  notes               String?
+  lostReason          String?
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  archivedAt DateTime?
+
+  contactAttempts    ContactAttempt[]
+  meetings           Meeting[]
+  proposals          Proposal[]
+  negotiations       Negotiation[]
+  communicationNotes CommunicationNote[]
+  documents          Document[]          @relation("LeadDocuments")
+  client             Client?
+
+  @@index([status])
+  @@index([assignedToId])
+  @@index([nextFollowUpDate])
+  @@index([archivedAt])
+}
+
+model ContactAttempt {
+  id           String    @id @default(cuid())
+  leadId       String
+  lead         Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  outcome      String
+  notes        String?
+  nextAction   String?
+  nextFollowUp DateTime?
+  createdAt    DateTime  @default(now())
+}
+
+model Meeting {
+  id                     String      @id @default(cuid())
+  leadId                 String?
+  lead                   Lead?       @relation(fields: [leadId], references: [id])
+  clientId               String?
+  client                 Client?     @relation(fields: [clientId], references: [id])
+  weddingId              String?
+  wedding                Wedding?    @relation(fields: [weddingId], references: [id])
+  scheduledAt            DateTime
+  type                   MeetingType @default(OTHER)
+  participants           String?
+  notes                  String?
+  requirementsDiscovered String?
+  decisions              String?
+  followUpAction         String?
+  followUpDate           DateTime?
+  createdById            String
+  createdBy              User        @relation(fields: [createdById], references: [id])
+  createdAt              DateTime    @default(now())
+}
+
+model Proposal {
+  id           String         @id @default(cuid())
+  leadId       String
+  lead         Lead           @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  amount       Decimal        @db.Decimal(14, 2)
+  scope        String?
+  proposalDate DateTime       @default(now())
+  validUntil   DateTime?
+  status       ProposalStatus @default(DRAFT)
+  notes        String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  documents Document[] @relation("ProposalDocuments")
+}
+
+model Negotiation {
+  id            String    @id @default(cuid())
+  leadId        String
+  lead          Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  originalValue Decimal   @db.Decimal(14, 2)
+  revisedValue  Decimal?  @db.Decimal(14, 2)
+  finalValue    Decimal?  @db.Decimal(14, 2)
+  notes         String?
+  decisionDate  DateTime?
+  createdAt     DateTime  @default(now())
+}
+
+model Client {
+  id         String    @id @default(cuid())
+  leadId     String?   @unique
+  lead       Lead?     @relation(fields: [leadId], references: [id])
+  name       String
+  phone      String
+  whatsapp   String?
+  email      String?
+  address    String?
+  familyInfo String?
+  notes      String?
+  archivedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  weddings           Wedding[]
+  communicationNotes CommunicationNote[]
+  documents          Document[]          @relation("ClientDocuments")
+  meetings           Meeting[]
+
+  @@index([archivedAt])
+}
+
+// ---------------------------------------------------------------------------
+// Wedding Project
+// ---------------------------------------------------------------------------
+
+model Wedding {
+  id                  String        @id @default(cuid())
+  name                String
+  clientId            String
+  client              Client        @relation(fields: [clientId], references: [id])
+  brideName           String?
+  groomName           String?
+  primaryContact      String?
+  secondaryContacts   String?
+  startDate           DateTime
+  endDate             DateTime?
+  city                String?
+  state               String?
+  primaryVenue        String?
+  estimatedGuestCount Int?
+  projectValue        Decimal       @db.Decimal(14, 2)
+  advanceAmount       Decimal?      @db.Decimal(14, 2)
+  status              WeddingStatus @default(PLANNING)
+  projectManagerId    String?
+  projectManager      User?         @relation("WeddingProjectManager", fields: [projectManagerId], references: [id])
+  notes               String?
+  archivedAt          DateTime?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  team               WeddingTeamMember[]
+  functions          Function[]
+  tasks              Task[]
+  vendorBookings     VendorBooking[]
+  guests             Guest[]
+  budgetItems        BudgetItem[]
+  clientPayments     ClientPayment[]
+  vendorPayments     VendorPayment[]
+  documents          Document[]          @relation("WeddingDocuments")
+  timelineItems      TimelineItem[]
+  communicationNotes CommunicationNote[]
+  meetings           Meeting[]
+
+  @@index([status])
+  @@index([startDate])
+  @@index([archivedAt])
+}
+
+model WeddingTeamMember {
+  id        String   @id @default(cuid())
+  weddingId String
+  wedding   Wedding  @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  roleNote  String?
+  createdAt DateTime @default(now())
+
+  @@unique([weddingId, userId])
+}
+
+model Function {
+  id               String    @id @default(cuid())
+  weddingId        String
+  wedding          Wedding   @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  name             String
+  date             DateTime
+  startTime        DateTime?
+  endTime          DateTime?
+  venue            String?
+  guestCount       Int?
+  description      String?
+  requirements     String?
+  notes            String?
+  budgetAllocation Decimal?  @db.Decimal(14, 2)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  tasks           Task[]
+  vendorBookings  VendorBooking[]
+  guestAttendance FunctionGuest[]
+  documents       Document[]      @relation("FunctionDocuments")
+  timelineItems   TimelineItem[]
+}
+
+// ---------------------------------------------------------------------------
+// Tasks
+// ---------------------------------------------------------------------------
+
+model Task {
+  id             String       @id @default(cuid())
+  name           String
+  description    String?
+  weddingId      String?
+  wedding        Wedding?     @relation(fields: [weddingId], references: [id])
+  functionId     String?
+  function       Function?    @relation(fields: [functionId], references: [id])
+  assignedToId   String?
+  assignedTo     User?        @relation("TaskAssignee", fields: [assignedToId], references: [id])
+  createdById    String
+  createdBy      User         @relation("TaskCreatedBy", fields: [createdById], references: [id])
+  priority       TaskPriority @default(MEDIUM)
+  status         TaskStatus   @default(NOT_STARTED)
+  startDate      DateTime?
+  dueDate        DateTime?
+  completionDate DateTime?
+  dependsOnId    String?
+  dependsOn      Task?        @relation("TaskDependency", fields: [dependsOnId], references: [id])
+  dependents     Task[]       @relation("TaskDependency")
+  notes          String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  documents Document[] @relation("TaskDocuments")
+
+  @@index([assignedToId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+// ---------------------------------------------------------------------------
+// Vendors
+// ---------------------------------------------------------------------------
+
+model Vendor {
+  id                 String         @id @default(cuid())
+  name               String
+  businessName       String?
+  category           VendorCategory
+  contactPerson      String?
+  phone              String
+  whatsapp           String?
+  email              String?
+  address            String?
+  city               String?
+  serviceDescription String?
+  pricingNotes       String?
+  internalNotes      String?
+  rating             Int?
+  status             VendorStatus   @default(ACTIVE)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  bookings  VendorBooking[]
+  documents Document[]      @relation("VendorDocuments")
+}
+
+model VendorBooking {
+  id            String              @id @default(cuid())
+  vendorId      String
+  vendor        Vendor              @relation(fields: [vendorId], references: [id])
+  weddingId     String
+  wedding       Wedding             @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  functionId    String?
+  function      Function?           @relation(fields: [functionId], references: [id])
+  service       String?
+  agreedAmount  Decimal             @db.Decimal(14, 2)
+  bookingDate   DateTime?
+  status        VendorBookingStatus @default(PLANNED)
+  advanceAmount Decimal?            @db.Decimal(14, 2)
+  deliverables  String?
+  notes         String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  vendorPayments VendorPayment[]
+  documents      Document[]      @relation("VendorBookingDocuments")
+}
+
+// ---------------------------------------------------------------------------
+// Guests
+// ---------------------------------------------------------------------------
+
+model Guest {
+  id          String     @id @default(cuid())
+  weddingId   String
+  wedding     Wedding    @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  name        String
+  familyGroup String?
+  phone       String?
+  email       String?
+  rsvpStatus  RsvpStatus @default(PENDING)
+  guestCount  Int        @default(1)
+  notes       String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  functionAttendance FunctionGuest[]
+}
+
+model FunctionGuest {
+  id         String   @id @default(cuid())
+  guestId    String
+  guest      Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  functionId String
+  function   Function @relation(fields: [functionId], references: [id], onDelete: Cascade)
+  attending  Boolean  @default(true)
+
+  @@unique([guestId, functionId])
+}
+
+// ---------------------------------------------------------------------------
+// Budget & Finance
+// ---------------------------------------------------------------------------
+
+model BudgetItem {
+  id              String   @id @default(cuid())
+  weddingId       String
+  wedding         Wedding  @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  category        String
+  plannedAmount   Decimal  @default(0) @db.Decimal(14, 2)
+  committedAmount Decimal  @default(0) @db.Decimal(14, 2)
+  actualAmount    Decimal  @default(0) @db.Decimal(14, 2)
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ClientPayment {
+  id            String              @id @default(cuid())
+  weddingId     String
+  wedding       Wedding             @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  amount        Decimal             @db.Decimal(14, 2)
+  paidAmount    Decimal             @default(0) @db.Decimal(14, 2)
+  dueDate       DateTime
+  paymentType   String?
+  status        ClientPaymentStatus @default(UPCOMING)
+  paymentDate   DateTime?
+  paymentMethod String?
+  reference     String?
+  notes         String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  documents Document[] @relation("ClientPaymentDocuments")
+
+  @@index([dueDate])
+  @@index([status])
+}
+
+model VendorPayment {
+  id              String              @id @default(cuid())
+  vendorBookingId String
+  vendorBooking   VendorBooking       @relation(fields: [vendorBookingId], references: [id], onDelete: Cascade)
+  weddingId       String
+  wedding         Wedding             @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  amount          Decimal             @db.Decimal(14, 2)
+  paidAmount      Decimal             @default(0) @db.Decimal(14, 2)
+  dueDate         DateTime
+  status          VendorPaymentStatus @default(UPCOMING)
+  paymentDate     DateTime?
+  paymentMethod   String?
+  reference       String?
+  notes           String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  documents Document[] @relation("VendorPaymentDocuments")
+
+  @@index([dueDate])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// Documents
+// ---------------------------------------------------------------------------
+
+model Document {
+  id           String            @id @default(cuid())
+  fileName     String
+  filePath     String
+  fileType     String?
+  fileSize     Int?
+  ownerType    DocumentOwnerType
+  uploadedById String
+  uploadedBy   User              @relation(fields: [uploadedById], references: [id])
+  createdAt    DateTime          @default(now())
+
+  leadId          String?
+  lead            Lead?          @relation("LeadDocuments", fields: [leadId], references: [id])
+  clientId        String?
+  client          Client?        @relation("ClientDocuments", fields: [clientId], references: [id])
+  weddingId       String?
+  wedding         Wedding?       @relation("WeddingDocuments", fields: [weddingId], references: [id])
+  functionId      String?
+  function        Function?      @relation("FunctionDocuments", fields: [functionId], references: [id])
+  vendorId        String?
+  vendor          Vendor?        @relation("VendorDocuments", fields: [vendorId], references: [id])
+  vendorBookingId String?
+  vendorBooking   VendorBooking? @relation("VendorBookingDocuments", fields: [vendorBookingId], references: [id])
+  clientPaymentId String?
+  clientPayment   ClientPayment? @relation("ClientPaymentDocuments", fields: [clientPaymentId], references: [id])
+  vendorPaymentId String?
+  vendorPayment   VendorPayment? @relation("VendorPaymentDocuments", fields: [vendorPaymentId], references: [id])
+  taskId          String?
+  task            Task?          @relation("TaskDocuments", fields: [taskId], references: [id])
+  proposalId      String?
+  proposal        Proposal?      @relation("ProposalDocuments", fields: [proposalId], references: [id])
+}
+
+// ---------------------------------------------------------------------------
+// Timeline
+// ---------------------------------------------------------------------------
+
+model TimelineItem {
+  id         String           @id @default(cuid())
+  weddingId  String
+  wedding    Wedding          @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  functionId String?
+  function   Function?        @relation(fields: [functionId], references: [id])
+  title      String
+  type       TimelineItemType @default(OTHER)
+  date       DateTime
+  notes      String?
+  createdAt  DateTime         @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Communication
+// ---------------------------------------------------------------------------
+
+model CommunicationNote {
+  id               String               @id @default(cuid())
+  leadId           String?
+  lead             Lead?                @relation(fields: [leadId], references: [id])
+  clientId         String?
+  client           Client?              @relation(fields: [clientId], references: [id])
+  weddingId        String?
+  wedding          Wedding?             @relation(fields: [weddingId], references: [id])
+  contactPerson    String?
+  channel          CommunicationChannel @default(OTHER)
+  summary          String
+  outcome          String?
+  followUpRequired Boolean              @default(false)
+  followUpDate     DateTime?
+  createdById      String
+  createdBy        User                 @relation(fields: [createdById], references: [id])
+  createdAt        DateTime             @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Notifications & Audit
+// ---------------------------------------------------------------------------
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  message   String?
+  link      String?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String
+  entityType String
+  entityId   String
+  before     Json?
+  after      Json?
+  createdAt  DateTime @default(now())
+}

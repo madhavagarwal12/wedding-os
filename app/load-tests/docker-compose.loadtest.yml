@@ -1,0 +1,50 @@
+# Load-testing-only compose file. Runs the production Next.js build inside a
+# container with a hard 1 CPU / 2GB RAM cap, so k6 measures the app under a
+# realistic constrained-VM ceiling instead of the host laptop's full
+# resources. NOT part of the app's documented deployment runbook (see root
+# README's pm2 + Nginx path) — see load-tests/README.md and REPORT-*.md.
+#
+# Points at the HOST's existing local Postgres (localhost:5433, already
+# migrated + seeded) via host.docker.internal, rather than spinning up a
+# fresh containerized Postgres. This was a deliberate choice for this run:
+# it reuses real seeded data (Owner login, weddings, leads) without a second
+# migrate+seed step, at the documented cost that Postgres itself is NOT
+# resource-constrained in this test -- see REPORT's "Honest caveats" section.
+#
+# Run from the `app/` directory:
+#   docker compose -f load-tests/docker-compose.loadtest.yml up --build -d
+#   docker compose -f load-tests/docker-compose.loadtest.yml down
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: load-tests/Dockerfile.loadtest
+    image: weddingos-loadtest
+    ports:
+      - "3100:3000"
+    environment:
+      DATABASE_URL: "postgres://postgres@host.docker.internal:5433/weddingos?sslmode=disable"
+      AUTH_SECRET: "dev-secret-change-me-in-production-please-use-a-long-random-string"
+      NODE_ENV: "production"
+      # Auth.js v5 refuses requests whose Host header doesn't match what it
+      # expects when it can't infer the canonical origin (true here because
+      # the container listens on :3000 but is published to the host as
+      # :3100, and k6 hits it as localhost:3100) -- otherwise every
+      # /api/auth/* call 500s with "UntrustedHost". Fine for this
+      # load-testing container; NOT something to set in a real deployment
+      # without also locking down which hosts are actually trusted.
+      AUTH_TRUST_HOST: "true"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 2g
+    # docker compose (v2, non-swarm) does not enforce `deploy.resources.limits`
+    # by itself -- it needs either `docker stack deploy` (swarm) or the
+    # non-swarm cpus/mem_limit keys below, which ARE enforced by plain
+    # `docker compose up`. Both are set so the cap holds regardless of mode.
+    cpus: 1.0
+    mem_limit: 2g

@@ -1,0 +1,19 @@
+node_modules
+.next
+.git
+.claude
+.agents
+.windsurf
+e2e
+playwright-report
+test-results
+coverage
+uploads
+*.log
+
+# Secrets must never be baked into the image — passed at runtime via
+# docker-compose env_file instead.
+.env
+.env.local
+.env.production
+.env.production.local

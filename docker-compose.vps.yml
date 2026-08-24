@@ -1,0 +1,82 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: weddingos
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: weddingos
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U weddingos"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # One-off tooling container: `docker compose -f docker-compose.vps.yml
+  # --profile tools run --rm migrate` applies pending migrations and seeds
+  # the first Owner account. Never started by `up` on its own (profiles).
+  migrate:
+    build:
+      context: ./app
+      target: builder
+    profiles: ["tools"]
+    env_file:
+      - .env.production
+    environment:
+      DATABASE_URL: postgres://weddingos:${POSTGRES_PASSWORD}@postgres:5432/weddingos?sslmode=disable
+    command: sh -c "npx prisma migrate deploy && npx prisma db seed"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+
+  app:
+    build:
+      context: ./app
+      target: runner
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      DATABASE_URL: postgres://weddingos:${POSTGRES_PASSWORD}@postgres:5432/weddingos?sslmode=disable
+      PORT: 3000
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+      # Joins the reverse-proxy network your other VPS containers already
+      # use. Replace `traefik` below with the actual external network name
+      # if yours differs — check with `docker network ls` on the VPS.
+      - traefik
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.weddingos.rule=Host(`weddingos.autopilot-studio.com`)
+      - traefik.http.routers.weddingos.entrypoints=websecure
+      # Replace `letsencrypt` with your existing Traefik certresolver name
+      # (check your Traefik container's static config / other services'
+      # labels for the name already in use).
+      - traefik.http.routers.weddingos.tls.certresolver=letsencrypt
+      - traefik.http.services.weddingos.loadbalancer.server.port=3000
+      # Required when the app container has more than one network attached
+      # (internal + traefik here) — without this Traefik can pick the wrong
+      # one and the connection will hang after a successful TLS handshake.
+      - traefik.docker.network=traefik
+
+networks:
+  internal:
+    driver: bridge
+  traefik:
+    external: true
+    name: traefik
+
+volumes:
+  postgres_data:
+  uploads_data:

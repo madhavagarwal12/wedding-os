@@ -1,0 +1,200 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-hanken), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-hanken), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-label: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+
+  /* Wedding Ops design system — additional tonal tokens */
+  --color-primary-container: var(--primary-container);
+  --color-on-primary-container: var(--on-primary-container);
+  --color-secondary-container: var(--secondary-container);
+  --color-on-secondary-container: var(--on-secondary-container);
+  --color-tertiary: var(--tertiary);
+  --color-on-tertiary: var(--on-tertiary);
+  --color-tertiary-container: var(--tertiary-container);
+  --color-on-tertiary-container: var(--on-tertiary-container);
+  --color-surface: var(--surface);
+  --color-surface-dim: var(--surface-dim);
+  --color-surface-bright: var(--surface-bright);
+  --color-surface-container-lowest: var(--surface-container-lowest);
+  --color-surface-container-low: var(--surface-container-low);
+  --color-surface-container: var(--surface-container);
+  --color-surface-container-high: var(--surface-container-high);
+  --color-surface-container-highest: var(--surface-container-highest);
+  --color-outline: var(--outline);
+  --color-outline-variant: var(--outline-variant);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  /* Forest Green / Sage / Champagne — Wedding Ops design system */
+  --background: #f9f9f8;
+  --foreground: #191c1c;
+  --card: #ffffff;
+  --card-foreground: #191c1c;
+  --popover: #ffffff;
+  --popover-foreground: #191c1c;
+  --primary: #01261f;
+  --primary-foreground: #ffffff;
+  --secondary: #556257;
+  --secondary-foreground: #ffffff;
+  --muted: #f3f4f3;
+  --muted-foreground: #414846;
+  --accent: #d5e3d5;
+  --accent-foreground: #2b4d44;
+  --destructive: #ba1a1a;
+  --destructive-foreground: #ffffff;
+  --border: #c1c8c4;
+  --input: #f3f4f3;
+  --ring: #01261f;
+  --chart-1: #01261f;
+  --chart-2: #43655c;
+  --chart-3: #83a69c;
+  --chart-4: #b89a74;
+  --chart-5: #c1c8c4;
+  --radius: 0.5rem;
+
+  --primary-container: #1a3c34;
+  --on-primary-container: #c5eadf;
+  --secondary-container: #d5e3d5;
+  --on-secondary-container: #3d4a40;
+  --tertiary: #2f1d03;
+  --on-tertiary: #ffffff;
+  --tertiary-container: #473215;
+  --on-tertiary-container: #e2c199;
+  --surface: #f9f9f8;
+  --surface-dim: #d9dad9;
+  --surface-bright: #f9f9f8;
+  --surface-container-lowest: #ffffff;
+  --surface-container-low: #f3f4f3;
+  --surface-container: #edeeed;
+  --surface-container-high: #e7e8e7;
+  --surface-container-highest: #e1e3e2;
+  --outline: #717976;
+  --outline-variant: #c1c8c4;
+
+  --sidebar: #f3f4f3;
+  --sidebar-foreground: #414846;
+  --sidebar-primary: #1a3c34;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e7e8e7;
+  --sidebar-accent-foreground: #191c1c;
+  --sidebar-border: #c1c8c4;
+  --sidebar-ring: #01261f;
+}
+
+.dark {
+  --background: #10201c;
+  --foreground: #f0f1f0;
+  --card: #16241f;
+  --card-foreground: #f0f1f0;
+  --popover: #16241f;
+  --popover-foreground: #f0f1f0;
+  --primary: #aacec3;
+  --primary-foreground: #00382e;
+  --secondary: #3d4a40;
+  --secondary-foreground: #d8e6d8;
+  --muted: #1c2925;
+  --muted-foreground: #b0b8b4;
+  --accent: #2b4d44;
+  --accent-foreground: #d8e6d8;
+  --destructive: #ffb4ab;
+  --destructive-foreground: #690005;
+  --border: #3a453f;
+  --input: #1c2925;
+  --ring: #aacec3;
+  --chart-1: #aacec3;
+  --chart-2: #83a69c;
+  --chart-3: #43655c;
+  --chart-4: #e2c199;
+  --chart-5: #717976;
+
+  --primary-container: #2b4d44;
+  --on-primary-container: #c5eadf;
+  --secondary-container: #3d4a40;
+  --on-secondary-container: #d8e6d8;
+  --tertiary: #e2c199;
+  --on-tertiary: #472f10;
+  --tertiary-container: #594324;
+  --on-tertiary-container: #ffddb5;
+  --surface: #10201c;
+  --surface-dim: #10201c;
+  --surface-bright: #364440;
+  --surface-container-lowest: #0b1613;
+  --surface-container-low: #191c1c;
+  --surface-container: #1c2925;
+  --surface-container-high: #263330;
+  --surface-container-highest: #313e3a;
+  --outline: #8b938e;
+  --outline-variant: #414846;
+
+  --sidebar: #16241f;
+  --sidebar-foreground: #d8e6d8;
+  --sidebar-primary: #aacec3;
+  --sidebar-primary-foreground: #00382e;
+  --sidebar-accent: #263330;
+  --sidebar-accent-foreground: #f0f1f0;
+  --sidebar-border: #3a453f;
+  --sidebar-ring: #aacec3;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+@utility ambient-shadow {
+  box-shadow: 0px 4px 20px rgba(26, 60, 52, 0.06);
+}

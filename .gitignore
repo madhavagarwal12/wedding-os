@@ -1,0 +1,3 @@
+# Local PostgreSQL data (dev database on this machine)
+/pgdata
+/pglog.txt

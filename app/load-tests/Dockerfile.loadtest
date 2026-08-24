@@ -1,0 +1,48 @@
+# load-tests/Dockerfile.loadtest
+#
+# THIS IS A LOAD-TESTING ARTIFACT ONLY. It is NOT the app's documented
+# deployment path (see root README's pm2 + Nginx runbook, which this repo
+# deliberately uses instead of Docker for real deployment). This Dockerfile
+# exists solely so `docker run --cpus=1 --memory=2g` can put a hard, verifiable
+# resource ceiling on a real `next build && next start` production instance for
+# k6 load testing (see load-tests/README.md and REPORT-*.md).
+#
+# Build from the `app/` directory:
+#   docker build -f load-tests/Dockerfile.loadtest -t weddingos-loadtest .
+#
+# Run with the resource cap that is the entire point of this test:
+#   docker run --rm --cpus=1 --memory=2g -p 3100:3000 \
+#     -e DATABASE_URL="postgres://postgres@host.docker.internal:5433/weddingos?sslmode=disable" \
+#     -e AUTH_SECRET="dev-secret-change-me-in-production-please-use-a-long-random-string" \
+#     weddingos-loadtest
+#
+# See load-tests/docker-compose.loadtest.yml for the equivalent, preferred way
+# to run this (keeps the --cpus/--memory flags declarative and versioned).
+
+FROM node:24-alpine AS base
+WORKDIR /app
+
+# Install deps first for better layer caching.
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# Bring in the rest of the source and build.
+COPY . .
+
+# Prisma 7 requires the generated client; regenerate it in-image in case the
+# host's src/generated/prisma is stale or absent from the build context.
+RUN npx prisma generate
+
+# DATABASE_URL is not required at build time for this app (no
+# generateStaticParams/DB reads during `next build` — every authenticated
+# route is server-rendered dynamically), but Next's build step does import
+# src/lib/prisma.ts at module-eval time for some routes' type-checking passes,
+# so a syntactically valid placeholder avoids any accidental hard failure.
+ENV DATABASE_URL="postgres://postgres@host.docker.internal:5433/weddingos?sslmode=disable"
+ENV AUTH_SECRET="dev-secret-change-me-in-production-please-use-a-long-random-string"
+ENV NODE_ENV=production
+
+RUN npm run build
+
+EXPOSE 3000
+CMD ["npm", "start"]
